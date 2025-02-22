@@ -14,9 +14,21 @@ export class TaskService {
 
   @Cron(CronExpression.EVERY_MINUTE)
   async taskExecution(): Promise<void> {
+    const task = await this.takeTask();
+    if (!task) {
+      return;
+    }
     try {
+      const fetchResult = await fetch(task.url);
+      await this.taskRepository.update(task.id, {
+        status: TaskStatus.DONE,
+        http_code: fetchResult.status,
+      });
     } catch (error) {
-      console.log('Failed to handle tasks');
+      console.log('Failed to handle task');
+      await this.taskRepository.update(task.id, {
+        status: TaskStatus.ERROR,
+      });
     }
   }
 
@@ -26,7 +38,6 @@ export class TaskService {
         .createQueryBuilder('task')
         .setLock('pessimistic_write')
         .where('task.status = :status', { status: TaskStatus.NEW })
-        .orderBy('task.createdAt', 'ASC')
         .getOne();
 
       if (!task) {

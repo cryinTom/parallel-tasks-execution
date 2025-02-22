@@ -5,14 +5,14 @@ import { Task, TaskStatus } from './task.entity';
 import { Cron, CronExpression } from '@nestjs/schedule';
 
 @Injectable()
-export class TaskService {
+export class TasksService {
   constructor(
     @InjectRepository(Task)
     private readonly taskRepository: Repository<Task>,
     private readonly dataSource: DataSource,
   ) {}
 
-  @Cron(CronExpression.EVERY_MINUTE)
+  @Cron(CronExpression.EVERY_10_SECONDS)
   async taskExecution(): Promise<void> {
     const task = await this.takeTask();
     if (!task) {
@@ -25,7 +25,7 @@ export class TaskService {
         http_code: fetchResult.status,
       });
     } catch (error) {
-      console.log('Failed to handle task');
+      console.log('Failed to handle task', error);
       await this.taskRepository.update(task.id, {
         status: TaskStatus.ERROR,
       });
@@ -33,8 +33,11 @@ export class TaskService {
   }
 
   async takeTask(): Promise<Task | null> {
-    return await this.dataSource.transaction(async () => {
-      const task = await this.taskRepository
+    console.log('taking task');
+    return await this.dataSource.transaction(async (manager) => {
+      const repo = manager.getRepository(Task);
+
+      const task = await repo
         .createQueryBuilder('task')
         .setLock('pessimistic_write')
         .where('task.status = :status', { status: TaskStatus.NEW })
@@ -45,8 +48,8 @@ export class TaskService {
       }
 
       task.status = TaskStatus.PROCESSING;
-      await this.taskRepository.save(task);
-
+      await repo.save(task);
+      console.log('returning tasks');
       return task;
     });
   }

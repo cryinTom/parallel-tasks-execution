@@ -2,7 +2,6 @@ version: '3.8'
 
 services:
   tasks-processor1:
-    network_mode: bridge
     build:
       context: .
       dockerfile: Dockerfile
@@ -13,7 +12,6 @@ services:
       - "${PORT}:${PORT}"
     restart: unless-stopped
   tasks-processor2:
-    network_mode: bridge
     build:
       context: .
       dockerfile: Dockerfile
@@ -24,16 +22,15 @@ services:
       - "${PORT2}:${PORT2}"
     restart: unless-stopped
   main-db:
-    network_mode: bridge
     image: postgres
     restart: always
     ports:
-      - 5432:5432
+      - 5434:5432
     env_file: .env
     environment:
-      - POSTGRES_USER=${DB_USER}
-      - POSTGRES_PASSWORD=${DB_PASSWORD}
-      - POSTGRES_DB=${DB_NAME}
+      - "POSTGRES_USER=${DB_USERNAME}"
+      - "POSTGRES_PASSWORD=${DB_PASSWORD}"
+      - "POSTGRES_DB=${DATABASE}"
     volumes:
       - tasks-db:/var/lib/postgresql/data
 volumes:

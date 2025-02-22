@@ -9,7 +9,7 @@ import { TasksModule } from 'src/tasks/tasks.module';
   imports: [
     TasksModule,
     ScheduleModule.forRoot(),
-    ConfigModule.forRoot(),
+    ConfigModule.forRoot({ isGlobal: true }),
     TypeOrmModule.forRootAsync({
       useFactory: (config: ConfigService) => {
         return {
@@ -23,7 +23,7 @@ import { TasksModule } from 'src/tasks/tasks.module';
           synchronize: true,
         };
       },
-      inject: [ConfigModule],
+      inject: [ConfigService],
     }),
   ],
 })

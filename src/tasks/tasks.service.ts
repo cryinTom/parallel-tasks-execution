@@ -51,7 +51,7 @@ export class TasksService {
 
       task.status = TaskStatus.PROCESSING;
       await repo.save(task);
-      this.logger.debug('Task acquired successfully');
+      this.logger.log('Task taken');
       return task;
     });
   }

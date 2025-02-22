@@ -29,10 +29,11 @@ services:
     restart: always
     ports:
       - 5432:5432
+    env_file: .env
     environment:
-      - POSTGRES_USER=user
-      - POSTGRES_PASSWORD=password
-      - POSTGRES_DB=domains
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_DB=${DB_NAME}
     volumes:
       - tasks-db:/var/lib/postgresql/data
 volumes:

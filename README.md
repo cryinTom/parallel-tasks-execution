@@ -1,73 +1,47 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="200" alt="Nest Logo" /></a>
-</p>
+# Distributed Task Processor
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+## Описание проекта
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://coveralls.io/github/nestjs/nest?branch=master" target="_blank"><img src="https://coveralls.io/repos/github/nestjs/nest/badge.svg?branch=master#9" alt="Coverage" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+Данный проект реализует механизм распределённых обработчиков, использующих базу данных для хранения заданий. Каждый обработчик получает из БД URL, выполняет по нему HTTP-запрос и сохраняет результат (HTTP-код ответа) обратно в таблицу. При этом реализована параллельная обработка заданий, а каждый URL обрабатывается только один раз.
 
-## Description
+## Используемые технологии
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+- **TypeScript** – основной язык разработки
+- **NestJS** – фреймворк для создания серверных приложений
+- **TypeORM** – ORM для работы с базой данных
+- **@nestjs/schedule** – модуль для реализации cron-задач и периодических запусков
+- **Docker** и **Docker Compose** – для контейнеризации и упрощённого развертывания
 
-## Installation
+## Ключевая функциональность
 
-```bash
-$ yarn install
-```
+- **Получение задач:**  
+  Метод `takeTask()` извлекает задание со статусом `NEW` из базы данных. Для обеспечения уникальности обработки используется транзакция с блокировкой записи (`pessimistic_write`), что предотвращает одновременное выполнение одного и того же URL несколькими обработчиками.
 
-## Running the app
+- **Обработка задачи:**  
+  Метод `taskExecution()`, запускаемый с помощью cron каждые 10 секунд, выполняет следующие шаги:
+  - Извлекает доступное задание.
+  - Выполняет HTTP-запрос по URL, указанному в задании.
+  - При успешном запросе обновляет задание: статус меняется на `DONE`, а в поле `http_code` сохраняется код ответа.
+  - При возникновении ошибки задание получает статус `ERROR`.
 
-```bash
-# development
-$ yarn run start
+- **Параллельное выполнение:**  
+  Cron-задача, настроенная на выполнение каждые 10 секунд, позволяет запускать несколько обработчиков параллельно, что соответствует требованиям распределённой обработки.
 
-# watch mode
-$ yarn run start:dev
+## Структура проекта
 
-# production mode
-$ yarn run start:prod
-```
+- **task.entity.ts**  
+  Описание сущности `Task` с полями:
+  - `id` – уникальный идентификатор
+  - `url` – URL ресурса для выполнения запроса
+  - `status` – статус задания (`NEW`, `PROCESSING`, `DONE`, `ERROR`)
+  - `http_code` – HTTP код результата выполнения запроса
 
-## Test
+- **tasks.service.ts**  
+  Основная логика обработки задач:
+  - Метод `takeTask()` извлекает задание и обновляет его статус на `PROCESSING` в рамках транзакции.
+  - Метод `taskExecution()` выполняет HTTP-запрос и обновляет задание в базе данных с итоговым статусом и HTTP-кодом.
 
-```bash
-# unit tests
-$ yarn run test
+## Запуск проекта
 
-# e2e tests
-$ yarn run test:e2e
+Проект запускается с использованием Docker Compose, что позволяет легко масштабировать обработчики и управлять зависимостями, такими как база данных.
 
-# test coverage
-$ yarn run test:cov
-```
-
-## Support
-
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
-
-## Stay in touch
-
-- Author - [Kamil Myśliwiec](https://kamilmysliwiec.com)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
-
-## License
-
-Nest is [MIT licensed](LICENSE).

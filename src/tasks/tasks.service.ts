@@ -21,10 +21,8 @@ export class TaskService {
   }
 
   async takeTask(): Promise<Task | null> {
-    return await this.dataSource.transaction(async (manager) => {
-      // Выбираем задачу со статусом 'pending' с блокировкой строки (pessimistic write)
-      const task = await manager
-        .getRepository(Task)
+    return await this.dataSource.transaction(async () => {
+      const task = await this.taskRepository
         .createQueryBuilder('task')
         .setLock('pessimistic_write')
         .where('task.status = :status', { status: TaskStatus.NEW })
@@ -36,7 +34,7 @@ export class TaskService {
       }
 
       task.status = TaskStatus.PROCESSING;
-      await manager.getRepository(Task).save(task);
+      await this.taskRepository.save(task);
 
       return task;
     });

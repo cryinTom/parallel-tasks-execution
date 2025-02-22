@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
 import { Task, TaskStatus } from './task.entity';
@@ -6,6 +6,8 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 
 @Injectable()
 export class TasksService {
+  private readonly logger = new Logger(TasksService.name);
+
   constructor(
     @InjectRepository(Task)
     private readonly taskRepository: Repository<Task>,
@@ -25,7 +27,7 @@ export class TasksService {
         http_code: fetchResult.status,
       });
     } catch (error) {
-      console.log('Failed to handle task', error);
+      this.logger.error('Failed to handle task', error.stack);
       await this.taskRepository.update(task.id, {
         status: TaskStatus.ERROR,
       });
@@ -33,7 +35,7 @@ export class TasksService {
   }
 
   async takeTask(): Promise<Task | null> {
-    console.log('taking task');
+    this.logger.debug('Taking task');
     return await this.dataSource.transaction(async (manager) => {
       const repo = manager.getRepository(Task);
 
@@ -49,7 +51,7 @@ export class TasksService {
 
       task.status = TaskStatus.PROCESSING;
       await repo.save(task);
-      console.log('returning tasks');
+      this.logger.debug('Task acquired successfully');
       return task;
     });
   }

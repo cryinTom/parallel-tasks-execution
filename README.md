@@ -1,4 +1,4 @@
-# Distributed Task Processor
+# Parallel Tasks Execution
 
 ## Описание проекта
 
